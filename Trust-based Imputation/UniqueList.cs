@@ -6,22 +6,23 @@ using System.Threading.Tasks;
 
 namespace Trust_based_Imputation
 {
-    class UniqueList : List<int>
-    {
-        public UniqueList()
-            : base()
-        {
-        }
+	class UniqueList : List<int>
+	{
+		public UniqueList()
+			: base()
+		{
+		}
 
-        public UniqueList(int capacity)
-            : base(capacity)
-        {
-        }
+		public UniqueList(int capacity)
+			: base(capacity)
+		{
+		}
 
-        public virtual void Insert(int item)
-        {
-            if (!base.Contains(item))
-                base.Add(item);
-        }
-    }
+		/* customized add */
+		public virtual void Add(int item)
+		{
+			if (!base.Contains(item))
+				base.Add(item);
+		}
+	}
 }

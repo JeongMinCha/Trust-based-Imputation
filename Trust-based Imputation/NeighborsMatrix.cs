@@ -8,7 +8,7 @@ namespace Trust_based_Imputation
 {
     class NeighborsMatrix
     {
-        int direction;
+        private int direction = 0;
         public int distanceThreshold;
         public int userNum;
         public UniqueList[,] matrix;
@@ -18,12 +18,11 @@ namespace Trust_based_Imputation
         {
             this.distanceThreshold = 0;
             this.userNum = 0;
-            this.direction = GlobalVar.FORWARD;
-
-            matrix = null;
+            this.direction = Globals.FORWARD;
+			this.matrix = null;
         }
 
-        public NeighborsMatrix(int distanceThreshold, 
+        public NeighborsMatrix(int distanceThreshold,
                         int direction, TrustNetwork tn)
         {
             this.distanceThreshold = distanceThreshold;
@@ -34,7 +33,7 @@ namespace Trust_based_Imputation
 
             switch (direction)
             {
-                case GlobalVar.FORWARD:
+                case Globals.FORWARD:
                     for (int h = 0; h < distanceThreshold; ++h)
                     {
                         for (int u = 0; u < userNum; ++u)
@@ -45,7 +44,7 @@ namespace Trust_based_Imputation
                         }
                     }
                     break;
-                case GlobalVar.BACKWARD:
+                case Globals.BACKWARD:
                     for (int h = 0; h < distanceThreshold; ++h)
                     {
                         for (int u = 0; u < userNum; ++u)
@@ -56,7 +55,7 @@ namespace Trust_based_Imputation
                         }
                     }
                     break;
-                case GlobalVar.BIDIRECTED:
+                case Globals.BIDIRECTED:
                     for (int h = 0; h < distanceThreshold; ++h)
                     {
                         for (int u = 0; u < userNum; ++u)

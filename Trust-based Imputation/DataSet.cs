@@ -40,7 +40,7 @@ namespace Trust_based_Imputation
 
         /* Returns max numbers of items.
          * Need to analyze only rating matrix file. */
-        private int MaxUserNum()
+        private int MaxItemNum()
         {
             int max = 0;
             /* Analyze the rating matrix file. */
@@ -48,7 +48,7 @@ namespace Trust_based_Imputation
             foreach(string line in lines)
             {
                 // words[0] = user, words[1] = item, words[2] = rating score
-                string[] words = line.Split(GlobalVar.delimiter);
+                string[] words = line.Split(Globals.delimiter);
                 try {
                     if (words[1] != null)
                     {
@@ -65,7 +65,7 @@ namespace Trust_based_Imputation
 
         /* Returns max number of users.
          * Need to analyze both rating matrix and trust network file. */
-        private int MaxItemNum()
+        private int MaxUserNum()
         {
             int max = 0;
             /* Analyze the rating matrix file. */
@@ -73,12 +73,12 @@ namespace Trust_based_Imputation
             foreach (string line in lines)
             {
                 // words[0] = user, words[1] = item, words[2] = rating score
-                string[] words = line.Split(GlobalVar.delimiter);
+                string[] words = line.Split(Globals.delimiter);
                 try
                 {
-                    if (words[1] != null)
+                    if (words[0] != null)
                     {
-                        int cur = Convert.ToInt32(words[1]);
+                        int cur = Convert.ToInt32(words[0]);
                         if (cur > max) max = cur;
                     }
                 } catch (IndexOutOfRangeException e)
@@ -88,11 +88,11 @@ namespace Trust_based_Imputation
                 }
             }
             /* Analyze the trust network file. */
-            lines = File.ReadAllLines(ratingMatrixFile);
+            lines = File.ReadAllLines(trustNetworkFile);
             foreach (string line in lines)
             {
-                // words[0] = user, words[1] = item, words[2] = rating score
-                string[] words = line.Split(GlobalVar.delimiter);
+                // words[0] = user, words[1] = user, words[2] = yes or no
+                string[] words = line.Split(Globals.delimiter);
                 try
                 {
                     if (words[1] != null)
