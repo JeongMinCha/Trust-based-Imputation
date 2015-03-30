@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -23,93 +24,136 @@ namespace Trust_based_Imputation
         {
             this.userNum = dataSet.userNum;
 
-            // make new instances of ALGraph class
-            // This class and ALGraph are composition-related.
             forwardGraph = new ALGraph(userNum);
             backwardGraph = new ALGraph(userNum);
 
-            string[] lines = System.IO.File.ReadAllLines(dataSet.trustNetworkFile);
-            foreach (string line in lines)
-            {
-                // words[0] = trustor, words[1] = trustee, words[2] = true or false
-                string[] words = line.Split('\t');
-                if (words[0] != null && words[1] != null)
-                {
-                    int fromV = Convert.ToInt32(words[0]);
-                    int toV = Convert.ToInt32(words[1]);
-                    forwardGraph.InsertEdge(fromV, toV);    // edge 'trustor -> trustee'
-                    backwardGraph.InsertEdge(toV, fromV);   // edge 'trustee -> trustor'
-                }
-            }
+			ConstructGrpahs(dataSet.trustNetworkFile);
             Console.WriteLine("2. Trust Network Graph is made");
         }
 
-        /* Returns list of users who trust the user. (backward graph) */
-        public UniqueList GetTrustorList(int userID, int hop)
-        {
-            UniqueList trustorList = null;
-            if (hop == 1)
-                trustorList = backwardGraph.AdjNodes(userID);
-            else
-            {
-                trustorList = new UniqueList();
-                UniqueList prevList = GetTrustorList(userID, hop - 1);
-                foreach (int fromV in prevList)
-                {
-                    UniqueList tmp = backwardGraph.AdjNodes(fromV);
-                    foreach (int v in tmp)
-                        trustorList.Add(v);
-                }
-            }
-            return trustorList;
-        }
+		private void ConstructGrpahs (string fileName)
+		{
+			string[] lines = System.IO.File.ReadAllLines(fileName);
+			foreach (string line in lines)
+			{
+				// words[0] = trustor, words[1] = trustee, words[2] = true or false
+				string[] words = line.Split('\t');
+				if (words[0] != null && words[1] != null)
+				{
+					int fromV = Convert.ToInt32(words[0]);
+					int toV = Convert.ToInt32(words[1]);
+					forwardGraph.InsertEdge(fromV, toV);    // edge 'trustor -> trustee'
+					backwardGraph.InsertEdge(toV, fromV);   // edge 'trustee -> trustor'
+				}
+			}
+		}
 
-        /* Returns list of users who are trusted by the user. (forward graph) */
-        public UniqueList GetTrusteeList(int userID, int hop)
-        {
-            UniqueList trusteeList = null;
 
-            if (hop == 1)
-                trusteeList = forwardGraph.AdjNodes(userID);
-            else
-            {
-                trusteeList = new UniqueList();
-                UniqueList prevList = GetTrusteeList(userID, hop - 1);
-                foreach (int fromV in prevList)
-                {
-                    UniqueList tmp = forwardGraph.AdjNodes(fromV);
-                    foreach (int v in tmp)
-                        trusteeList.Add(v);
-                }
-            }
-            return trusteeList;
-        }
+		public BitArray GetForwardAllNeighbors (int userID, int distanceThreshold)
+		{
+			if (distanceThreshold < 1)
+				return null;
+			
+			BitArray neighborArray = new BitArray(userNum);
+			HashSet<int> oldSet = null;
+			for(int hop=1; hop<=distanceThreshold; ++hop)
+			{
+				HashSet<int> newSet = new HashSet<int>();
+				if (hop == 1)
+					newSet = oldSet = new HashSet<int>(forwardGraph.AdjNodes(userID));
+				else
+				{
+					foreach (int fromV in oldSet)	// for all old neighbors
+					{
+						// find new neighbors from the old neighbors.
+						ISet<int> iSet = new HashSet<int>(forwardGraph.AdjNodes(fromV));
+						foreach (int newNeighbor in iSet)
+							newSet.Add(newNeighbor);
+					}
+					oldSet = newSet;
+				}
+				foreach (int item in newSet)
+					neighborArray.Set(item-1, true);
+			}
+			// One Person cannot be a his/her neighbor.
+			neighborArray.Set(userID-1, false);
+			return neighborArray;
+		}
 
-        /* Returns union of trustor and trustee list.*/
-        public UniqueList GetTrustorAndTrusteeList(int userID, int hop)
-        {
-            UniqueList trustorList = GetTrustorList(userID, hop);
-            UniqueList trusteeList = GetTrusteeList(userID, hop);
-            UniqueList list = new UniqueList(trustorList.Count + trusteeList.Count);
+		// TODO: FIX IT
+		public BitArray GetBackwardAllNeighbors (int userID, int distanceThreshold)
+		{
+			if (distanceThreshold < 1)
+				return null;
 
-            // get elements from trustor list
-            for (int i = 0; i < trustorList.Count; i++)
-                list.Add(trustorList[i]);
+			BitArray neighborArray = new BitArray(userNum);
+			List<int> oldList = null;
+			for(int hop=1; hop<=distanceThreshold; ++hop)
+			{
+				List<int> newList = new List<int>();
+				if (hop == 1)
+					newList = oldList = backwardGraph.AdjNodes(userID);
+				else
+				{
+					foreach (int oldNeigbor in oldList)	// for all old neighbors
+					{
+						// find new neighbors from the old neighbors.
+						IList<int> list = backwardGraph.AdjNodes(oldNeigbor);
+						foreach (int newNeighbor in list)
+							newList.Add(newNeighbor);
+					}
+					oldList = newList;
+				}
 
-            // get elements from trustee list.
-            for (int i = 0; i < trusteeList.Count; i++)
-                list.Add(trusteeList[i]);
+				foreach (int item in newList)
+					neighborArray.Set(item-1, true);
+			}
 
-            // return the union of both list.
-            return list;
-        }
+			// One Person cannot be a his/her neighbor.
+			neighborArray.Set(userID-1, false);
+			return neighborArray;
+		}
 
-        /* It nullifies all instance elements and calls GC.Collect() */
-        public void Destroy()
-        {
-            forwardGraph.Destroy();
-            backwardGraph.Destroy();
-            GC.Collect();
-        }
+		// TODO: FIX IT
+		public BitArray GetBidirectedAllNeighbors (int userID, int distanceThreshold)
+		{
+			if (distanceThreshold < 1)
+				return null;
+
+			BitArray neighborArray = new BitArray(userNum);
+			List<int> oldList = null;
+			for(int hop=1; hop<=distanceThreshold; ++hop)
+			{
+				List<int> newList = new List<int>();
+				IList<int> forwardList;
+				IList<int> backwardList;
+
+				if (hop == 1)
+				{
+					forwardList = forwardGraph.AdjNodes(userID);
+					backwardList = backwardGraph.AdjNodes(userID);
+					oldList = newList = forwardList.Union(backwardList).ToList();
+				}
+				else
+				{
+					foreach (int oldNeighbor in oldList)	// for all old neighbors
+					{
+						forwardList = forwardGraph.AdjNodes(oldNeighbor);
+						backwardList = backwardGraph.AdjNodes(oldNeighbor);
+						// find new neighbors from the old neighbors.
+						foreach (int newNeighbor in forwardList.Union(backwardList))
+							newList.Add(newNeighbor);
+					}
+					oldList = newList;
+				}
+
+				foreach (int item in newList)
+					neighborArray.Set(item-1, true);
+			}
+
+			// One Person cannot be a his/her neighbor.
+			neighborArray.Set(userID-1, false);
+			return neighborArray;
+		}
     }
 }

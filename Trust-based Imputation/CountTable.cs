@@ -26,7 +26,7 @@ namespace Trust_based_Imputation
         }
     }
 
-    class CountTable : SortedDictionary<int, int>
+	class CountTable : SortedDictionary<int, double>
     {
         public CountTable()
             : base(new ReverseComparer<int>(Comparer<int>.Default))
@@ -35,12 +35,9 @@ namespace Trust_based_Imputation
 
         /* If key already exists, the value at key will increase.
         / Otherwise, key is inserted with value 1. */
-        public void AddCount(int key)
+        public void AugmentValue(int key)
         {
-            if (ContainsKey(key))
-                this[key] = (int)this[key] + 1;
-            else
-                Add(key, 1);
+			this[key] = (double)this[key] +1;
         }
     }
 }

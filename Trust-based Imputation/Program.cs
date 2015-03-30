@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -21,8 +22,9 @@ namespace Trust_based_Imputation
         const int ARGS_NUM = 6;
         static void Main(string[] args)
         {
+			Console.WriteLine(DateTime.Now.ToString("O"));
             DataSet dataSet = null;         // input data set
-            string newFileName = null;      // output file name
+			string outputFile = null;      // output file name
             int direction = 0;              // direction of edges in trust network
 
             /* threshold arguments δ, θ */
@@ -42,13 +44,16 @@ namespace Trust_based_Imputation
                 
                 // 신뢰 네트워크나 평점 파일이 없다면, 예외 처리
                 if(File.Exists(args[0]) == false || File.Exists(args[1]) == false)
-                    throw new FileNotFoundException();
+				{
+					Console.WriteLine(args[0]);
+					throw new FileNotFoundException();
+				}
 
                 // 인자 할당하기
                 dataSet = new DataSet(args[0], args[1]);
                 candidateThreshold = Convert.ToInt32(args[3]);
                 distanceThreshold = Convert.ToInt32(args[4]);
-                newFileName = String.Copy(args[5]);
+                outputFile = String.Copy(args[5]);
             }
             catch (FormatException fe) {
                 Console.WriteLine(fe.StackTrace);
@@ -65,18 +70,18 @@ namespace Trust_based_Imputation
 			Console.WriteLine("user num: {0}", dataSet.userNum);
 
 			/* Print Log */
-			string environment = "";
-			environment += "trust network file: " + args [0];
-			environment += "rating matrix file: " + args [1];
-			environment += "distance threshold: " + distanceThreshold + "\r\n";
-			environment += "candidate threshold: " + candidateThreshold + "\r\n";
-			if (direction == Globals.FORWARD) 
-				environment += "direction of edges: Forward\r\n";
-			else if (direction == Globals.BACKWARD) 
-				environment += "direction of edges: Backward\r\n";
-			else if (direction == Globals.BIDIRECTED) 
-				environment += "direction of edges: Bidirected\r\n";
-			SaveLog (environment);
+//			string environment = "";
+//			environment += "trust network file: " + args [0];
+//			environment += "rating matrix file: " + args [1];
+//			environment += "distance threshold: " + distanceThreshold + "\r\n";
+//			environment += "candidate threshold: " + candidateThreshold + "\r\n";
+//			if (direction == Globals.FORWARD) 
+//				environment += "direction of edges: Forward\r\n";
+//			else if (direction == Globals.BACKWARD) 
+//				environment += "direction of edges: Backward\r\n";
+//			else if (direction == Globals.BIDIRECTED) 
+//				environment += "direction of edges: Bidirected\r\n";
+//			Console.WriteLine (environment);
 
 			/* Print Console */
             Console.WriteLine("거리 threshold: {0}", distanceThreshold);
@@ -86,35 +91,19 @@ namespace Trust_based_Imputation
             RatingMatrix rm = new RatingMatrix(dataSet);
             TrustNetwork tn = new TrustNetwork(dataSet);
             NeighborsMatrix nm = new NeighborsMatrix(distanceThreshold, direction, tn);
-
-			/* Get average value of reliable neighbors */
-			double [] sum = new double[distanceThreshold];
-			double [] average = new double[distanceThreshold];
-			UniqueList[] hopNeiList;
-			for (int u = 1; u < dataSet.userNum; ++u)
-			{
-				hopNeiList = nm.HoppedNeighborsFor(u);
-				for (int i=0; i<hopNeiList.Count(); ++i)
-					sum[i] += hopNeiList[i].Count();
-			}
-			File.AppendAllText(@"./result.txt", environment);
-			for (int i=0; i<distanceThreshold; ++i)
-			{
-				average[i] = sum[i] / dataSet.userNum;
-				File.AppendAllText(@"./result.txt", (i+1) + ": " + sum[i] 
-						+ " " + average[i] + "\r\n");
-			}
-
-//            CandidateItemSet cis = new CandidateItemSet(nm, rm, candidateThreshold);
+			CandidateItemSet cis = new CandidateItemSet(nm, rm, candidateThreshold);
+			int sum=0;
+			for(int u=0; u<dataSet.userNum; ++u)
+				sum += cis.CandidateItemForUser(u+1).Count;
+			Console.WriteLine("Sum!: " + sum);
 
             /* Data Imputation */
-//            rm.MatrixImputation(nm, cis);
-//            rm.SaveToFile(newFileName);
-            Console.WriteLine("Data Imputation Complete. " +
-            				"\nThe imputed rating matrix file is made.");
-			SaveLog ("Program exists.");
-            Console.WriteLine();
-//			File.AppendAllText(@"./result.txt", DateTime.Now.ToString ("yyyy-MM-dd-HH-mm-ss") + "\r\n");
+			rm.MatrixImputation(nm, cis, outputFile);
+			Console.WriteLine("Data Imputation Complete.");
+			Console.WriteLine("The imputed rating matrix file is made.");
+//			SaveLog ("Program is finished.");
+			Console.WriteLine(DateTime.Now.ToString("O"));
+			while(true);
         }
 
         /* Prints usage command */

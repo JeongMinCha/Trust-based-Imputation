@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -11,7 +12,7 @@ namespace Trust_based_Imputation
         private int direction = 0;
         public int distanceThreshold;
         public int userNum;
-        public UniqueList[,] matrix;
+		public List<BitArray> matrix;
 
         /* Base Constructor */
         public NeighborsMatrix()
@@ -19,7 +20,7 @@ namespace Trust_based_Imputation
             this.distanceThreshold = 0;
             this.userNum = 0;
             this.direction = Globals.FORWARD;
-			this.matrix = null;
+			this.matrix = new List<BitArray>();
         }
 
         public NeighborsMatrix(int distanceThreshold,
@@ -29,81 +30,64 @@ namespace Trust_based_Imputation
             this.userNum = tn.userNum;
             this.direction = direction;
 
-            matrix = new UniqueList[distanceThreshold, userNum];
+			matrix = new List<BitArray>();
+			for(int i=0; i<userNum; ++i)
+				matrix.Add(new BitArray(userNum));
 
             switch (direction)
             {
                 case Globals.FORWARD:
-                    for (int h = 0; h < distanceThreshold; ++h)
-                    {
-                        for (int u = 0; u < userNum; ++u)
-                        {
-                            matrix[h, u] = tn.GetTrusteeList(u + 1, h + 1);
-                            for (int e = 0; e < h; e++)
-                                excludeList(matrix[h, u], matrix[e, u]);
-                        }
-                    }
-                    break;
+				for (int user=1; user<=userNum; ++user)
+				{
+					BitArray neighborArr = tn.GetForwardAllNeighbors(user, distanceThreshold);
+					matrix[user-1] = neighborArr;
+				}
+				break;
+
                 case Globals.BACKWARD:
-                    for (int h = 0; h < distanceThreshold; ++h)
-                    {
-                        for (int u = 0; u < userNum; ++u)
-                        {
-                            matrix[h, u] = tn.GetTrustorList(u + 1, h + 1);
-                            for (int e = 0; e < h; e++)
-                                excludeList(matrix[h, u], matrix[e, u]);
-                        }
-                    }
-                    break;
+				for (int user=1; user<=userNum; ++user)
+				{
+					BitArray neighborArr = tn.GetBackwardAllNeighbors(user, distanceThreshold);
+					matrix[user-1] = neighborArr;
+				}
+				break;
+
                 case Globals.BIDIRECTED:
-                    for (int h = 0; h < distanceThreshold; ++h)
-                    {
-                        for (int u = 0; u < userNum; ++u)
-                        {
-                            matrix[h, u] = tn.GetTrustorAndTrusteeList(u + 1, h + 1);
-                            for (int e = 0; e < h; e++)
-                                excludeList(matrix[h, u], matrix[e, u]);
-                        }
-                    }
-                    break;
+				for (int user=1; user<=userNum; ++user)
+				{
+					BitArray neighborArr = tn.GetBidirectedAllNeighbors(user, distanceThreshold);
+					matrix[user-1] = neighborArr;
+				}
+				break;
+
                 default:
                     break;
             }
             Console.WriteLine("3. Reliable Neighbors Matrix is made.");
         }
 
-        /* This method exclude elements in mainList which
-         * are same as elements in exclusionList */
-        private void excludeList(UniqueList mainList, UniqueList exclusionList)
-        {
-            foreach (int exElem in exclusionList)
-                mainList.Remove(exElem);
-        }
+		public bool CheckNeighboorhood(int userID, int targetUserID)
+		{
+			return matrix[userID-1].Get(targetUserID-1);
+		}
 
-        /* Returns array of list, which each list has users' list at each hop. */
-        public UniqueList[] HoppedNeighborsFor(int userID)
-        {
-            UniqueList[] list = new UniqueList[distanceThreshold];
+		/* Returns the bit array including neighbors of 'userID' user.*/
+		public BitArray NeighborArray (int userID)
+		{
+			return matrix[userID-1];	
+		}
 
-            for (int hop = 1; hop <= distanceThreshold; hop++)
-                list[hop - 1] = matrix[hop - 1, userID - 1];
-
-            return list;
-        }
-
-        /* Returns a list of all neighbors */
-        public UniqueList NeighborsFor(int userID)
-        {
-            UniqueList neighborList = new UniqueList();
-
-            for (int hop = 1; hop <= distanceThreshold; hop++)
-            {
-                UniqueList curList = matrix[hop - 1, userID - 1];  // neighbor list at hop
-                for (int i = 0; i < curList.Count; i++)
-                    neighborList.Add(curList[i]);
-            }
-
-            return neighborList;
-        }
+		/* Returns the list including neighbors of 'userID' user.*/
+		public List<int> NeighborList (int userID)
+		{
+			List<int> neighborList = new List<int>();
+			BitArray neighborArray = NeighborArray(userID);
+			for (int u=1; u<=userNum; ++u)
+			{
+				if (neighborArray[u-1].Equals(true))
+					neighborList.Add(u);
+			}
+			return neighborList;
+		}
     }
 }

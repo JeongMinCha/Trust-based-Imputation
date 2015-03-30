@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.IO;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,7 +14,8 @@ namespace Trust_based_Imputation
         int itemNum;        // column
         NeighborsMatrix nm;
         CandidateItemSet cim;
-        public Dictionary<int, int>[] matrix;
+		String outputFile;
+        private Dictionary<int, int>[] matrix;
 
         public RatingMatrix()
         {
@@ -22,7 +24,7 @@ namespace Trust_based_Imputation
             this.matrix = null;
         }
 
-        public RatingMatrix(DataSet dataSet)
+		public RatingMatrix(DataSet dataSet)
         {
             this.userNum = dataSet.userNum;
             this.itemNum = dataSet.itemNum;
@@ -46,6 +48,11 @@ namespace Trust_based_Imputation
             }
             Console.WriteLine("1. Rating Matrix is made from the file.");
         }
+
+		public Dictionary<int, int> GetScoreInfo (int userID)
+		{
+			return matrix[userID-1];
+		}
 
         /* Returns the rating score of the item ITEMID rated by the user USERID. 
          * Returns -1 if the score doesn't exist. */
@@ -94,95 +101,88 @@ namespace Trust_based_Imputation
         }
 
         /* This method imputates the rating marix */
-        public void MatrixImputation(NeighborsMatrix nm, CandidateItemSet cim)
+		public void MatrixImputation(NeighborsMatrix nm, CandidateItemSet cim, String outputFile)
         {
             Console.WriteLine("MatrixImputation() starts...");
 
+			StreamWriter sw = new StreamWriter(outputFile);
+			sw.Close();
+
             this.nm = nm;
             this.cim = cim;
+			this.outputFile = outputFile;
 
-            for (int u=1; u<=userNum; ++u)
-                RowImputation(u);
-
+			int sum=0;
+            for (int u=1; u<=userNum; ++u)			// for all user u
+			{
+				List<int> neighborList = nm.NeighborList(u);
+				sum += RowImputation(u, neighborList);
+			}
+			Console.WriteLine(sum);
             Console.WriteLine("MatrixImputation() ends...");
-
         }
 
         /* This method imputates a row of the rating matrix, which means the rating scores of
          * all items rated by neighbors of user USERID. */
-        private void RowImputation(int userID)
+		private int RowImputation(int userID, List<int> neighborList)
         {
-            UniqueList candidateItemList = cim.CandidateItemForUser(userID);
-            foreach (int itemID in candidateItemList)
-            {
-                if (Score(userID, itemID) == -1)
-                {
-                    double prediction = RatingScorePrediction(userID, itemID);
-                    Insert(userID, itemID, (int)prediction);
-                }
-            }
+			List<int> candidateItemList = cim.CandidateItemForUser(userID);
+
+			int count = 0;
+			int score=0;
+			for (int itemID=1; itemID<=itemNum; ++itemID)
+			{
+				score = Score(userID, itemID);
+				if (score != -1)
+				{
+					OutputFileWrite(userID, itemID, score);
+					count++;
+				}
+				// For candidate items, predict the score and write it in output file.
+				else if (candidateItemList.Contains(itemID) == true)
+				{
+					double prediction = RatingScorePrediction(userID, itemID, neighborList);
+					OutputFileWrite(userID, itemID, (int) prediction);
+					count++;
+				}
+			}
+			return count;
         }
+
+		/* Write (userID, itemID, score) pair into the output file. */
+		private void OutputFileWrite(int userID, int itemID, int score)
+		{
+			StringBuilder sb = new StringBuilder();
+			sb.Clear();
+			sb.Append((userID).ToString()).Append("\t");
+			sb.Append((itemID).ToString()).Append("\t");
+			sb.Append((score).ToString()).Append("\r\n");
+
+			File.AppendAllText(outputFile, sb.ToString());
+		}
 
         /* Returns the prediction of the rating score which the user USERID
          * would have rated the item ITEMID. */
-        private double RatingScorePrediction(int userID, int itemID)
+		private double RatingScorePrediction(int userID, int itemID, List<int> neighborList)
         {
-            int count = 0;      // count of ratings of neighbors
+            int count = 0;
             double total = 0;
             double average = 0;
-            UniqueList neighborList = nm.NeighborsFor(userID);
+			int score = 0;
 
-            for(int v = 0; v < neighborList.Count; ++v)
-            {
-                double score = 0;
-                int neighbor = neighborList[v];
-
-                if ((score = Score(neighbor, itemID)) != -1)
-                {
-                    total += (score - AverageScoreFor(neighbor));
-                    ++count;
-                }
-            }
-
+			foreach (int neighbor in neighborList)	// for all neighbors
+			{
+				if ((score = Score(neighbor, itemID)) != -1)
+				{
+					total += (score - AverageScoreFor(neighbor));
+					++count;
+				}
+			}
             if (count > 0)
-                average = total / count;
+				average = total / (double)count;
             average += AverageScoreFor(userID);
 
             return average;
-        }
-
-        /* The data in rating matrix will be saved into the file. */
-        public void SaveToFile(string newFileName)
-        {
-            Console.WriteLine("SaveToFile() starts... ");
-            string line = null;
-            string[] token = new string[3]; // token[0]: user, token[1]: item, token[2]: score
-            StringBuilder sb = new StringBuilder();
-
-            for (int user = 1; user <= userNum; user++)
-            {
-                token[0] = (user).ToString();
-
-                Dictionary<int, int> dict = matrix[user - 1];  // key = item, value = rating score.
-                foreach (int item in dict.Keys)
-                {
-                    sb.Clear();
-                    // token[0]: user number
-                    sb.Append(token[0]).Append("\t");
-
-                    // token[1]: item number 
-                    token[1] = (item).ToString();
-                    sb.Append(token[1]).Append("\t");
-
-                    // token[2]: rating score
-                    token[2] = ((int)dict[item]).ToString();
-                    sb.Append(token[2]).Append("\n");
-
-                    line = sb.ToString();
-                    System.IO.File.AppendAllText(newFileName, line);
-                }
-            }
-            Console.WriteLine("SaveToFile() ends... ");
         }
     }
 }
