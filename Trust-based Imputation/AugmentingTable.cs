@@ -4,13 +4,13 @@ using System.Collections.Generic;
 
 namespace Trust_based_Imputation
 {
-	public class AugmentingTable : Dictionary<int, double>
+	public class AugmentingTable : Dictionary<long, long>
 	{
 		public AugmentingTable () : base()
 		{
 		}
 
-		public void AugmentValue (int key)
+		public void AugmentValue (long key)
 		{
 			try
 			{

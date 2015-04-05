@@ -90,12 +90,8 @@ namespace Trust_based_Imputation
             /* Making 4 main data structure for data imputation. */
             RatingMatrix rm = new RatingMatrix(dataSet);
             TrustNetwork tn = new TrustNetwork(dataSet);
-            NeighborsMatrix nm = new NeighborsMatrix(distanceThreshold, direction, tn);
-			CandidateItemSet cis = new CandidateItemSet(nm, rm, candidateThreshold);
-			int sum=0;
-			for(int u=0; u<dataSet.userNum; ++u)
-				sum += cis.CandidateItemForUser(u+1).Count;
-			Console.WriteLine("Sum!: " + sum);
+            NeighborsMatrix nm = new NeighborsMatrix(distanceThreshold, direction, tn, rm);
+			CandidateItemSets cis = new CandidateItemSets(nm, rm, candidateThreshold);
 
             /* Data Imputation */
 			rm.MatrixImputation(nm, cis, outputFile);
@@ -103,7 +99,7 @@ namespace Trust_based_Imputation
 			Console.WriteLine("The imputed rating matrix file is made.");
 //			SaveLog ("Program is finished.");
 			Console.WriteLine(DateTime.Now.ToString("O"));
-			while(true);
+//			while(true);
         }
 
         /* Prints usage command */

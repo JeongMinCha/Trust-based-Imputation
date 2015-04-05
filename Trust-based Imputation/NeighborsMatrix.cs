@@ -13,6 +13,7 @@ namespace Trust_based_Imputation
         public int distanceThreshold;
         public int userNum;
 		public List<BitArray> matrix;
+		RatingMatrix rm;
 
         /* Base Constructor */
         public NeighborsMatrix()
@@ -24,13 +25,14 @@ namespace Trust_based_Imputation
         }
 
         public NeighborsMatrix(int distanceThreshold,
-                        int direction, TrustNetwork tn)
+			int direction, TrustNetwork tn, RatingMatrix rm)
         {
             this.distanceThreshold = distanceThreshold;
             this.userNum = tn.userNum;
             this.direction = direction;
+			this.rm = rm;
 
-			matrix = new List<BitArray>();
+			matrix = new List<BitArray>(userNum);
 			for(int i=0; i<userNum; ++i)
 				matrix.Add(new BitArray(userNum));
 
@@ -63,13 +65,36 @@ namespace Trust_based_Imputation
                 default:
                     break;
             }
+		
+			long totalNeighborCount = 0;
+			for(int u=1; u<=userNum; ++u)
+			{
+				totalNeighborCount += NeighborCount(u);
+			}
+			Console.WriteLine("Total neighbors count: " + totalNeighborCount);
+			Console.WriteLine("Average neighbors count: " + (totalNeighborCount/(double)userNum).ToString("N2"));
+
             Console.WriteLine("3. Reliable Neighbors Matrix is made.");
+			Console.WriteLine("Time: " + DateTime.Now.ToString("O"));
+			GC.Collect();
         }
 
-		public bool CheckNeighboorhood(int userID, int targetUserID)
+		/* Returns # of the user's neighbors who rated the item. */
+		public int NeighborRatingCount (int userID, int itemID)
 		{
-			return matrix[userID-1].Get(targetUserID-1);
+			int count=0;
+			BitArray neighborArr = NeighborArray(userID);
+			for(int neighbor=1; neighbor<=userNum; ++neighbor)
+			{
+				if (neighborArr[neighbor-1].Equals(true))	// for all neighbors
+				{
+					if (rm.HasRating(neighbor, itemID))
+						++ count;
+				}
+			}
+			return count;
 		}
+
 
 		/* Returns the bit array including neighbors of 'userID' user.*/
 		public BitArray NeighborArray (int userID)
@@ -88,6 +113,18 @@ namespace Trust_based_Imputation
 					neighborList.Add(u);
 			}
 			return neighborList;
+		}
+
+		private int NeighborCount (int userID)
+		{
+			int count = 0;
+			BitArray neighborArray = NeighborArray(userID);
+			for(int i=0; i<userNum; ++i)
+			{
+				if (neighborArray[i].Equals(true))
+					++ count;
+			}
+			return count;
 		}
     }
 }

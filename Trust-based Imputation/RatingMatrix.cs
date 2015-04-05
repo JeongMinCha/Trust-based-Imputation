@@ -10,18 +10,20 @@ namespace Trust_based_Imputation
 {
     class RatingMatrix
     {
-        int userNum;        // row
-        int itemNum;        // column
+        public int userNum;        // row
+        public int itemNum;        // column
         NeighborsMatrix nm;
-        CandidateItemSet cim;
+        CandidateItemSets cim;
 		String outputFile;
         private Dictionary<int, int>[] matrix;
+		private double[] averageScores;
 
         public RatingMatrix()
         {
             this.userNum = 0;
             this.itemNum = 0;
             this.matrix = null;
+			this.averageScores = null;
         }
 
 		public RatingMatrix(DataSet dataSet)
@@ -32,6 +34,8 @@ namespace Trust_based_Imputation
             matrix = new Dictionary<int, int>[userNum];
             for (int i = 0; i < userNum; i++)
                 matrix[i] = new Dictionary<int, int>();
+
+			averageScores = new double[userNum];
 
             string[] lines = File.ReadAllLines(dataSet.ratingMatrixFile);
             foreach (string line in lines)
@@ -46,7 +50,12 @@ namespace Trust_based_Imputation
                     Insert(user, item, score);
                 }
             }
+
+			for (int u=1; u<=userNum; ++u)
+				averageScores[u-1] = AverageScoreFor(u);
+			
             Console.WriteLine("1. Rating Matrix is made from the file.");
+			Console.WriteLine("Time: " + DateTime.Now.ToString("O"));
         }
 
 		public Dictionary<int, int> GetScoreInfo (int userID)
@@ -54,10 +63,22 @@ namespace Trust_based_Imputation
 			return matrix[userID-1];
 		}
 
+		public bool HasRating (int userID, int itemID)
+		{
+			return matrix[userID-1].ContainsKey(itemID);
+		}
+
         /* Returns the rating score of the item ITEMID rated by the user USERID. 
          * Returns -1 if the score doesn't exist. */
         public int Score(int userID, int itemID)
         {
+//			try {
+//				return matrix[userID-1][itemID];
+//			} catch (KeyNotFoundException) {
+//				return -1;
+//			} catch (ArgumentOutOfRangeException) {
+//				return -1;
+//			}
             Dictionary<int, int> dict = null;
             if (matrix[userID - 1] != null)
                 dict = matrix[userID - 1];
@@ -101,7 +122,7 @@ namespace Trust_based_Imputation
         }
 
         /* This method imputates the rating marix */
-		public void MatrixImputation(NeighborsMatrix nm, CandidateItemSet cim, String outputFile)
+		public void MatrixImputation(NeighborsMatrix nm, CandidateItemSets cim, String outputFile)
         {
             Console.WriteLine("MatrixImputation() starts...");
 
@@ -126,7 +147,7 @@ namespace Trust_based_Imputation
          * all items rated by neighbors of user USERID. */
 		private int RowImputation(int userID, List<int> neighborList)
         {
-			List<int> candidateItemList = cim.CandidateItemForUser(userID);
+			BitArray candidateItemArray = cim.CandidateItemBitArray(userID);
 
 			int count = 0;
 			int score=0;
@@ -139,7 +160,7 @@ namespace Trust_based_Imputation
 					count++;
 				}
 				// For candidate items, predict the score and write it in output file.
-				else if (candidateItemList.Contains(itemID) == true)
+				else if (candidateItemArray[itemID-1] == true)
 				{
 					double prediction = RatingScorePrediction(userID, itemID, neighborList);
 					OutputFileWrite(userID, itemID, (int) prediction);
@@ -174,13 +195,13 @@ namespace Trust_based_Imputation
 			{
 				if ((score = Score(neighbor, itemID)) != -1)
 				{
-					total += (score - AverageScoreFor(neighbor));
+					total += (score - averageScores[neighbor-1]);
 					++count;
 				}
 			}
             if (count > 0)
 				average = total / (double)count;
-            average += AverageScoreFor(userID);
+			average += averageScores[userID-1];
 
             return average;
         }

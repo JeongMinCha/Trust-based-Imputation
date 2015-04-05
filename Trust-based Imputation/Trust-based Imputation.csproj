@@ -42,7 +42,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ALGraph.cs" />
-    <Compile Include="CandidateItemSet.cs" />
     <Compile Include="CountTable.cs" />
     <Compile Include="DataSet.cs" />
     <Compile Include="NeighborsMatrix.cs" />
@@ -51,6 +50,7 @@
     <Compile Include="RatingMatrix.cs" />
     <Compile Include="TrustNetwork.cs" />
     <Compile Include="AugmentingTable.cs" />
+    <Compile Include="CandidateItemSets.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

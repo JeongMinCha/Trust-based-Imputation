@@ -29,6 +29,7 @@ namespace Trust_based_Imputation
 
 			ConstructGrpahs(dataSet.trustNetworkFile);
             Console.WriteLine("2. Trust Network Graph is made");
+			Console.WriteLine("Time: " + DateTime.Now.ToString("O"));
         }
 
 		private void ConstructGrpahs (string fileName)
@@ -80,51 +81,49 @@ namespace Trust_based_Imputation
 			return neighborArray;
 		}
 
-		// TODO: FIX IT
 		public BitArray GetBackwardAllNeighbors (int userID, int distanceThreshold)
 		{
 			if (distanceThreshold < 1)
 				return null;
 
 			BitArray neighborArray = new BitArray(userNum);
-			List<int> oldList = null;
+			HashSet<int> oldSet = null;
 			for(int hop=1; hop<=distanceThreshold; ++hop)
 			{
-				List<int> newList = new List<int>();
+				HashSet<int> newSet = new HashSet<int>();
 				if (hop == 1)
-					newList = oldList = backwardGraph.AdjNodes(userID);
+					newSet = oldSet = new HashSet<int>(backwardGraph.AdjNodes(userID));
 				else
 				{
-					foreach (int oldNeigbor in oldList)	// for all old neighbors
+					foreach (int fromV in oldSet)	// for all old neighbors
 					{
 						// find new neighbors from the old neighbors.
-						IList<int> list = backwardGraph.AdjNodes(oldNeigbor);
-						foreach (int newNeighbor in list)
-							newList.Add(newNeighbor);
+						ISet<int> iSet = new HashSet<int>(backwardGraph.AdjNodes(fromV));
+						foreach (int newNeighbor in iSet)
+							newSet.Add(newNeighbor);
 					}
-					oldList = newList;
+					oldSet = newSet;
 				}
-
-				foreach (int item in newList)
+				foreach (int item in newSet)
 					neighborArray.Set(item-1, true);
 			}
-
 			// One Person cannot be a his/her neighbor.
 			neighborArray.Set(userID-1, false);
 			return neighborArray;
 		}
-
-		// TODO: FIX IT
+			
 		public BitArray GetBidirectedAllNeighbors (int userID, int distanceThreshold)
 		{
 			if (distanceThreshold < 1)
 				return null;
 
 			BitArray neighborArray = new BitArray(userNum);
-			List<int> oldList = null;
+			HashSet<int> oldSet = null;
 			for(int hop=1; hop<=distanceThreshold; ++hop)
 			{
-				List<int> newList = new List<int>();
+				HashSet<int> newSet = new HashSet<int>();
+				HashSet<int> forwardSet;
+				HashSet<int> backwardSet;
 				IList<int> forwardList;
 				IList<int> backwardList;
 
@@ -132,23 +131,29 @@ namespace Trust_based_Imputation
 				{
 					forwardList = forwardGraph.AdjNodes(userID);
 					backwardList = backwardGraph.AdjNodes(userID);
-					oldList = newList = forwardList.Union(backwardList).ToList();
+					forwardSet = new HashSet<int>(forwardList);
+					backwardSet = new HashSet<int>(backwardList);
+					oldSet = newSet = new HashSet<int>(forwardList.Union(backwardList).ToList());
 				}
 				else
 				{
-					foreach (int oldNeighbor in oldList)	// for all old neighbors
+					foreach (int oldNeighbor in oldSet)	// for all old neighbors
 					{
 						forwardList = forwardGraph.AdjNodes(oldNeighbor);
 						backwardList = backwardGraph.AdjNodes(oldNeighbor);
 						// find new neighbors from the old neighbors.
 						foreach (int newNeighbor in forwardList.Union(backwardList))
-							newList.Add(newNeighbor);
+							newSet.Add(newNeighbor);
 					}
-					oldList = newList;
+					oldSet = newSet;
 				}
 
-				foreach (int item in newList)
-					neighborArray.Set(item-1, true);
+				foreach (int item in newSet)
+				{
+					// If it is not set, set it true
+					if (neighborArray[item-1].Equals(false))	
+						neighborArray.Set(item-1, true);
+				}
 			}
 
 			// One Person cannot be a his/her neighbor.
